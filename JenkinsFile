@@ -69,16 +69,16 @@ pipeline {
         sh 'terraform apply -auto-approve tfplan'
       }
     }
-  }
+   }
 
-  post {
+   post {
     always {
       sh 'echo "Cleaning up workspace..."'
       cleanWs()
     }
     failure {
       mail to: 'you@company.com', subject: "Terraform Jenkins Job Failed: ${env.JOB_NAME}", body: "Check job ${env.BUILD_URL}"
-    }
-  }
-}
+     }
+   }
+ } 
 }
