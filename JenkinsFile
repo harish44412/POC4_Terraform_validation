@@ -1,6 +1,6 @@
 pipeline {
   agent any 
-stages {
+stage{
         stage('Checkout') {
             steps {
                 echo 'Cloning repository...'
@@ -8,13 +8,12 @@ stages {
             }
         }
 
- stage{
-  environment {
-    // Jenkins credential IDs (Secret text) you created
-    AWS_ACCESS_KEY_ID     = credentials('AWS_ACCESS_KEY_ID')
-    AWS_SECRET_ACCESS_KEY = credentials('AWS_SECRET_ACCESS_KEY')
-  }
-}
+ stage('environment'){
+      // Jenkins credential IDs (Secret text) you created
+      AWS_ACCESS_KEY_ID     = credentials('AWS_ACCESS_KEY_ID')
+      AWS_SECRET_ACCESS_KEY = credentials('AWS_SECRET_ACCESS_KEY')
+     }
+  
  
   
     stage('Checkout') {
