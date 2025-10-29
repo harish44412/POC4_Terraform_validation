@@ -1,0 +1,75 @@
+
+pipeline {
+  agent any
+ 
+  environment {
+    //A Jenkins credential IDs (Secret text) you created
+    AWS_ACCESS_KEY_ID     = credentials('AWS_ACCESS_KEY_ID')
+    AWS_SECRET_ACCESS_KEY = credentials('AWS_SECRET_ACCESS_KEY')
+  }
+ 
+  stages {
+    stage('Checkout') {
+      steps {
+        checkout scm
+      }
+    }
+ 
+    stage('Terraform Init') {
+      steps {
+        sh '''
+          terraform --version
+          terraform init -input=false
+        '''
+      }
+    }
+ 
+    stage('Terraform Format Check') {
+      steps {
+        sh '''
+          terraform fmt -check -recursive
+        '''
+      }
+    }
+ 
+    stage('Terraform Validate') {
+      steps {
+        sh 'terraform validate'
+      }
+    }
+ 
+    stage('Terraform Plan') {
+      steps {
+        sh '''
+          terraform plan -out=tfplan -input=false
+          terraform show -no-color tfplan > tfplan.txt
+        '''
+        archiveArtifacts artifacts: 'tfplan.txt', fingerprint: true
+      }
+    }
+ 
+    stage('Optional: Approval to Apply') {
+      when { expression { return false } } // set true if you want approval
+      steps {
+        input message: 'Approve Terraform apply?'
+      }
+    }
+ 
+    stage('Terraform Apply (Optional)') {
+      when { expression { return false } } // set true to allow apply
+      steps {
+        sh 'terraform apply -auto-approve tfplan'
+      }
+    }
+  }
+ 
+  post {
+    always {
+      sh 'echo "Cleaning up workspace..."'
+      cleanWs()
+    }
+    failure {
+      mail to: 'you@company.com', subject: "Terraform Jenkins Job Failed: ${env.JOB_NAME}", body: "Check job ${env.BUILD_URL}"
+    }
+  }
+}
