@@ -1,52 +1,75 @@
+
 pipeline {
-    agent any
+  agent any
  
-    environment {
-        AWS_ACCESS_KEY_ID     = credentials('AWS_ACCESS_KEY_ID')
-        AWS_SECRET_ACCESS_KEY = credentials('AWS_SECRET_ACCESS_KEY')
+  environment {
+    // Jenkins credential IDs (Secret text) you created
+    AWS_ACCESS_KEY_ID     = credentials('AWS_ACCESS_KEY_ID')
+    AWS_SECRET_ACCESS_KEY = credentials('AWS_SECRET_ACCESS_KEY')
+  }
+ 
+  stages {
+    stage('Checkout') {
+      steps {
+        checkout scm
+      }
     }
  
-    stages {
-        stage('Checkout') {
-            steps {
-                git branch: 'main', url: 'https://github.com/harish44412/POC4_Terraform_validation.git'
-            }
-        }
- 
-        stage('Terraform Init') {
-            steps {
-                sh 'terraform init'
-            }
-        }
- 
-        stage('Terraform Validate') {
-            steps {
-                sh 'terraform validate'
-            }
-        }
- 
-        stage('Terraform Plan') {
-            steps {
-                sh 'terraform plan -out=tfplan'
-            }
-        }
- 
-        stage('Approval Before Apply') {
-            steps {
-                input message: 'Do you want to apply the Terraform plan?'
-            }
-        }
- 
-        stage('Terraform Apply') {
-            steps {
-                sh 'terraform apply -auto-approve tfplan'
-            }
-        }
+    stage('Terraform Init') {
+      steps {
+        sh '''
+          terraform --version
+          terraform init -input=false
+        '''
+      }
     }
  
-    post {
-        always {
-            echo 'Pipeline execution complete!'
-        }
+    stage('Terraform Format Check') {
+      steps {
+        sh '''
+          terraform fmt -check -recursive
+        '''
+      }
     }
+ 
+    stage('Terraform Validate') {
+      steps {
+        sh 'terraform validate'
+      }
+    }
+ 
+    stage('Terraform Plan') {
+      steps {
+        sh '''
+          terraform plan -out=tfplan -input=false
+          terraform show -no-color tfplan > tfplan.txt
+        '''
+        archiveArtifacts artifacts: 'tfplan.txt', fingerprint: true
+      }
+    }
+ 
+    stage('Optional: Approval to Apply') {
+      when { expression { return false } } // set true if you want approval
+      steps {
+        input message: 'Approve Terraform apply?'
+      }
+    }
+ 
+    stage('Terraform Apply (Optional)') {
+      when { expression { return false } } // set true to allow apply
+      steps {
+        sh 'terraform apply -auto-approve tfplan'
+      }
+    }
+  }
+ 
+  post {
+    always {
+      sh 'echo "Cleaning up workspace..."'
+      cleanWs()
+    }
+    failure {
+      mail to: 'you@company.com', subject: "Terraform Jenkins Job Failed: ${env.JOB_NAME}", body: "Check job ${env.BUILD_URL}"
+    }
+  }
 }
