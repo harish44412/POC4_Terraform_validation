@@ -2,7 +2,7 @@ pipeline {
     agent any
  
     environment {
-        withAWS(credentials: 'my-aws-credentails')
+        withAWS(region: 'eu-north-1', credentials: 'my-aws-credentials')
     }
  
     stages {
@@ -44,7 +44,7 @@ pipeline {
             cleanWs()
         }
         failure {
-            mail to: 'you@company.com', subject: 'Terraform Jenkins Pipeline Failed'
+            mail to: 'harisharun42@gmail.com', subject: 'Terraform Jenkins Pipeline Failed'
         }
     }
 }
